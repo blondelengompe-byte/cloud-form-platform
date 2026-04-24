@@ -45,7 +45,7 @@ jobs:
       # Déploiement automatique sur EC2
       # Le VPS télécharge directement depuis GitHub (plus simple et rapide)
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
