@@ -41,18 +41,21 @@ jobs:
           docker build -t $ECR_REGISTRY/form-app:latest .
           docker push $ECR_REGISTRY/form-app:latest
 
-      # Transfert des fichiers de configuration (rsync - uniquement fichiers modifiés)
+      # Transfert des fichiers de configuration (rsync)
+      - name: Install Rsync
+        run: sudo apt-get install -y rsync
+
+      - name: Setup SSH Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > ssh_key
+          chmod 600 ssh_key
+
       - name: Copy Config Files to EC2
-        uses: appleboy/rsync-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,proxy,monitoring,backups,Dockerfile"
-          target: "/home/ubuntu/cloud-form-platform"
-          delete: true
-          verbose: true
-          compress: true
+        run: |
+          rsync -avz --delete \
+            -e "ssh -o StrictHostKeyChecking=no -i ssh_key" \
+            docker-compose.yml proxy monitoring backups Dockerfile \
+            ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/cloud-form-platform/
 
       # Déploiement automatique sur EC2
       - name: Deploy to EC2
