@@ -51,17 +51,21 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
+            set -x
+            echo "=== Starting deployment ==="
             cd /home/ubuntu/cloud-form-platform
             
             # Cloner ou mettre à jour le dépôt GitHub avec le token
             if [ -d ".git" ]; then
+              echo "=== Git pull ==="
               git pull
             else
+              echo "=== Git clone ==="
               git clone https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git .
               git checkout ${{ github.sha }}
             fi
             
-            # Re-création propre du .env à partir des secrets GitHub
+            echo "=== Creating .env ==="
             cat <<EOF > .env
             REGISTRY=${{ steps.login-ecr.outputs.registry }}
             DOMAIN_NAME=${{ secrets.EC2_HOST }}.nip.io
