@@ -1,0 +1,212 @@
+services:
+  # Database Layer (Isolated)
+  db:
+    image: postgres:15-alpine
+    container_name: forms_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - data-net
+    user: "70:70" # Run as non-root user (postgres)
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Cache Layer
+  redis:
+    image: redis:6-alpine
+    container_name: forms_redis
+    restart: always
+    networks:
+      - app-net
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Application Layer (Multi-instance ready)
+  formbricks:
+    image: ${REGISTRY}/form-app:latest
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=${NEXTAUTH_URL}
+      - WEBAPP_URL=${WEBAPP_URL}
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - REDIS_URL=${REDIS_URL}
+    networks:
+      - app-net
+      - data-net
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      replicas: 2 # High Availability requirement
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:3000/api/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Reverse Proxy + WAF (ModSecurity)
+  proxy:
+    image: owasp/modsecurity-crs:nginx-alpine
+    container_name: forms_proxy
+    restart: always
+    ports:
+      - "80:8080"
+      - "443:8443"
+    environment:
+      - PORT=8080
+      - PROXY_SSL=on
+      - DOMAIN_NAME=${DOMAIN_NAME}
+      - MODSEC_RULE_ENGINE=${MODSEC_MODE}
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/templates/conf.d/default.conf.template:ro
+      - certs:/etc/letsencrypt
+      - certbot_etc:/var/www/certbot
+      - nginx_logs:/var/log/nginx
+    networks:
+      - edge-net
+      - app-net
+    depends_on:
+      - formbricks
+
+  # SSL Management
+  certbot:
+    image: certbot/certbot
+    container_name: forms_certbot
+    restart: always
+    volumes:
+      - certs:/etc/letsencrypt
+      - certbot_etc:/var/www/certbot
+    command: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - edge-net
+
+  # Metrics Collection
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: forms_cadvisor
+    restart: always
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    networks:
+      - monitoring-net
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: forms_node_exporter
+    restart: always
+    networks:
+      - monitoring-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: forms_prometheus
+    restart: always
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - monitoring-net
+    depends_on:
+      - cadvisor
+      - node-exporter
+
+  # Logs Aggregation
+  loki:
+    image: grafana/loki:latest
+    container_name: forms_loki
+    restart: always
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+    networks:
+      - monitoring-net
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: forms_promtail
+    restart: always
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
+    networks:
+      - monitoring-net
+    depends_on:
+      - loki
+
+  # Visualization
+  grafana:
+    image: grafana/grafana:latest
+    container_name: forms_grafana
+    restart: always
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+    networks:
+      - edge-net
+      - monitoring-net
+    depends_on:
+      - prometheus
+      - loki
+
+  # Automated Backup Worker
+  backup:
+    image: amazon/aws-cli:latest
+    container_name: forms_backup
+    restart: always
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
+      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+    networks:
+      - data-net
+      - edge-net
+    volumes:
+      - ./backups/backup_s3.sh:/usr/local/bin/backup_s3.sh:ro
+      - ./proxy:/etc/nginx/conf.d:ro
+      - ./monitoring:/etc/prometheus:ro
+    entrypoint: [ "/bin/sh", "-c", "echo '0 3 * * * /usr/local/bin/backup_s3.sh' > /etc/crontabs/root && crond -f" ]
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  edge-net:
+    driver: bridge
+  app-net:
+    internal: true
+  data-net:
+    internal: true
+  monitoring-net:
+
+
+volumes:
+  db_data:
+  certs:
+  certbot_etc:
+  nginx_logs:
+  prometheus_data:
+  grafana_data:
