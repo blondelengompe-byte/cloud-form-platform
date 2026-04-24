@@ -42,19 +42,8 @@ jobs:
           docker push $ECR_REGISTRY/form-app:latest
 
       # Transfert des fichiers de configuration (rsync)
-      # Transfert des fichiers de configuration (SCP optimisé)
-      - name: Copy Config Files to EC2
-        uses: appleboy/scp-action@master
-        with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,proxy,monitoring,backups,Dockerfile"
-          target: "/home/ubuntu/cloud-form-platform"
-          strip_components: 1
-          timeout: 60s
-
       # Déploiement automatique sur EC2
+      # Le VPS télécharge directement depuis GitHub (plus simple et rapide)
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
@@ -62,12 +51,14 @@ jobs:
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            mkdir -p /home/ubuntu/cloud-form-platform
             cd /home/ubuntu/cloud-form-platform
             
-            # Installer rsync si absent (pour les futurs transferts)
-            if ! command -v rsync &> /dev/null; then
-              sudo apt-get update && sudo apt-get install -y rsync
+            # Cloner ou mettre à jour le dépôt GitHub avec le token
+            if [ -d ".git" ]; then
+              git pull
+            else
+              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
+              git checkout ${{ github.sha }}
             fi
             
             # Re-création propre du .env à partir des secrets GitHub
