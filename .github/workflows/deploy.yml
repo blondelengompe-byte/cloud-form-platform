@@ -22,18 +22,13 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
-      # Générer le token ECR pour le VPS distant
       - name: Generate ECR Login Token
         id: ecr-token
         run: |
           ECR_TOKEN=$(aws ecr get-login-password --region eu-west-3)
           echo "::add-mask::$ECR_TOKEN"
           echo "ECR_TOKEN=$ECR_TOKEN" >> $GITHUB_OUTPUT
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
-      # Build & Push de l'image Applicative (Formbricks)
       - name: Build & Push Formbricks App
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -41,31 +36,23 @@ jobs:
           docker build -t $ECR_REGISTRY/form-app:latest .
           docker push $ECR_REGISTRY/form-app:latest
 
-      # Transfert des fichiers de configuration (rsync)
-      # Déploiement automatique sur EC2
-      # Le VPS télécharge directement depuis GitHub (plus simple et rapide)
+      - name: Copy Config Files to EC2
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.yml,proxy,monitoring,backups,Dockerfile"
+          target: "/home/ubuntu/cloud-form-platform"
+
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.0
+        uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            set -x
-            echo "=== Starting deployment ==="
             cd /home/ubuntu/cloud-form-platform
-            
-            # Cloner ou mettre à jour le dépôt GitHub avec le token
-            if [ -d ".git" ]; then
-              echo "=== Git pull ==="
-              git pull
-            else
-              echo "=== Git clone ==="
-              git clone https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git .
-              git checkout ${{ github.sha }}
-            fi
-            
-            echo "=== Creating .env ==="
             cat <<EOF > .env
             REGISTRY=${{ steps.login-ecr.outputs.registry }}
             DOMAIN_NAME=${{ secrets.EC2_HOST }}.nip.io
@@ -77,21 +64,14 @@ jobs:
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             POSTGRES_DB=formbricks
             REDIS_URL=redis://redis:6379
-            MODSEC_MODE=${{ vars.MODSEC_MODE || 'DetectionOnly' }}
+            MODSEC_MODE=DetectionOnly
             AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             AWS_DEFAULT_REGION=eu-west-3
             S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}
             GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
             EOF
-            
-            # Login ECR avec le token généré sur GitHub Actions
             echo "${{ steps.ecr-token.outputs.ECR_TOKEN }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
-            echo "=== Pulling Docker images ==="
-            DOCKER_BUILDKIT=0 docker compose pull --no-color
-            echo "=== Starting containers ==="
-            docker compose up -d --scale formbricks=2
-            echo "=== Cleaning up ==="
-            docker image prune -f
-            echo "=== Container status ==="
+            docker compose pull
+            docker compose up -d
             docker compose ps
