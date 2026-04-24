@@ -7,12 +7,13 @@ on:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
@@ -20,24 +21,26 @@ jobs:
 
       - name: Login to Amazon ECR
         id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Generate ECR Login Token
-        id: ecr-token
-        run: |
-          ECR_TOKEN=$(aws ecr get-login-password --region eu-west-3)
-          echo "::add-mask::$ECR_TOKEN"
-          echo "ECR_TOKEN=$ECR_TOKEN" >> $GITHUB_OUTPUT
-
-      - name: Build & Push Formbricks App
+      - name: Build & Push App Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
           docker build -t $ECR_REGISTRY/form-app:latest .
           docker push $ECR_REGISTRY/form-app:latest
 
+      - name: Create folder on EC2
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            mkdir -p /home/ubuntu/cloud-form-platform
+
       - name: Copy Config Files to EC2
-        uses: appleboy/scp-action@master
+        uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
@@ -46,13 +49,14 @@ jobs:
           target: "/home/ubuntu/cloud-form-platform"
 
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
+        uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
             cd /home/ubuntu/cloud-form-platform
+
             cat <<EOF > .env
             REGISTRY=${{ steps.login-ecr.outputs.registry }}
             DOMAIN_NAME=${{ secrets.EC2_HOST }}.nip.io
@@ -71,7 +75,9 @@ jobs:
             S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}
             GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
             EOF
-            echo "${{ steps.ecr-token.outputs.ECR_TOKEN }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+
+            echo "${{ steps.login-ecr.outputs.password }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+
             docker compose pull
             docker compose up -d
             docker compose ps
