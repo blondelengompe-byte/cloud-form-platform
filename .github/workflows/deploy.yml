@@ -42,43 +42,17 @@ jobs:
           docker push $ECR_REGISTRY/form-app:latest
 
       # Transfert des fichiers de configuration (rsync)
-      - name: Install Rsync
-        run: sudo apt-get install -y rsync
-
-      - name: Setup SSH Key
-        run: |
-          echo "${{ secrets.EC2_SSH_KEY }}" > ssh_key
-          chmod 600 ssh_key
-
+      # Transfert des fichiers de configuration (SCP optimisé)
       - name: Copy Config Files to EC2
-        run: |
-          # Fonction de retry pour rsync
-          retry_rsync() {
-            local attempt=1
-            local max_attempts=3
-            while [ $attempt -le $max_attempts ]; do
-              echo "Attempt $attempt/$max_attempts"
-              rsync -avz --delete \
-                -e "ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o ServerAliveInterval=20 -o ServerAliveCountMax=3 -i ssh_key" \
-                --rsync-path="mkdir -p /home/ubuntu/cloud-form-platform && rsync" \
-                --timeout=60 \
-                docker-compose.yml proxy monitoring backups Dockerfile \
-                ubuntu@${{ secrets.EC2_HOST }}:/home/ubuntu/cloud-form-platform/
-              
-              if [ $? -eq 0 ]; then
-                echo "Rsync succeeded!"
-                return 0
-              fi
-              
-              echo "Rsync failed, retrying in 5 seconds..."
-              sleep 5
-              attempt=$((attempt + 1))
-            done
-            echo "Rsync failed after $max_attempts attempts"
-            return 1
-          }
-          
-          retry_rsync
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "docker-compose.yml,proxy,monitoring,backups,Dockerfile"
+          target: "/home/ubuntu/cloud-form-platform"
+          strip_components: 1
+          timeout: 60s
 
       # Déploiement automatique sur EC2
       - name: Deploy to EC2
