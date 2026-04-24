@@ -57,7 +57,7 @@ jobs:
             if [ -d ".git" ]; then
               git pull
             else
-              git clone https://${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git .
+              git clone https://${{ secrets.GH_TOKEN }}@github.com/${{ github.repository }}.git .
               git checkout ${{ github.sha }}
             fi
             
