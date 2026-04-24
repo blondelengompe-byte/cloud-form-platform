@@ -83,7 +83,11 @@ jobs:
             
             # Login ECR avec le token généré sur GitHub Actions
             echo "${{ steps.ecr-token.outputs.ECR_TOKEN }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
-            docker compose pull
+            echo "=== Pulling Docker images ==="
+            DOCKER_BUILDKIT=0 docker compose pull --no-color
+            echo "=== Starting containers ==="
             docker compose up -d --scale formbricks=2
+            echo "=== Cleaning up ==="
             docker image prune -f
+            echo "=== Container status ==="
             docker compose ps
