@@ -94,6 +94,19 @@ jobs:
             echo "${{ steps.get-ecr-password.outputs.password }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             echo "✅ Docker Login réussi"
 
+            # SSL Bootstrap (Chicken and Egg fix)
+            echo "--- Vérification des certificats SSL ---"
+            CERT_PATH="/root/cloud-form-platform/certs/live/${{ secrets.VPS_HOST }}.nip.io"
+            if [ ! -f "$CERT_PATH/fullchain.pem" ]; then
+              echo "⚠️ Certificats manquants, génération de certificats temporaires..."
+              mkdir -p "$CERT_PATH"
+              openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
+                -keyout "$CERT_PATH/privkey.pem" \
+                -out "$CERT_PATH/fullchain.pem" \
+                -subj "/CN=${{ secrets.VPS_HOST }}.nip.io"
+              echo "✅ Certificats temporaires générés"
+            fi
+
             # Deployment
             echo "--- Pull des images ---"
             docker compose pull
