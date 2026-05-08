@@ -53,6 +53,9 @@ services:
         condition: service_healthy
     # Automatically run migrations on startup
     command: sh -c "npx prisma migrate deploy && node apps/web/server.js"
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     deploy:
       replicas: 2 # High Availability requirement
 
