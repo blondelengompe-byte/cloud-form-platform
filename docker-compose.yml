@@ -52,11 +52,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # Automatically run migrations on startup
-    command: sh -c "npx prisma migrate deploy && node apps/web/server.js"
-    dns:
-      - 8.8.8.8
-      - 8.8.4.4
+    # Automatically run migrations on startup with the correct schema path
+    command: sh -c "npx prisma migrate deploy --schema /app/packages/database/prisma/schema.prisma && node apps/web/server.js"
     deploy:
       replicas: 2 # High Availability requirement
 
@@ -157,6 +154,7 @@ services:
     image: grafana/grafana:latest
     container_name: forms_grafana
     restart: always
+    user: "0" # Run as root to fix volume and plugin permissions
     ports:
       - "3001:3000"
     environment:
