@@ -51,7 +51,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # Healthcheck removed for compatibility
+    # Automatically run migrations on startup
+    command: sh -c "npx prisma migrate deploy && node apps/web/server.js"
     deploy:
       replicas: 2 # High Availability requirement
 
