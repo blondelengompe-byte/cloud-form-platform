@@ -1,7 +1,7 @@
 services:
   # Database Layer (Isolated)
   db:
-    image: postgres:15-alpine
+    image: ankane/pgvector:v0.5.1 # Required for Formbricks vector extensions
     container_name: forms_postgres
     restart: always
     environment:
