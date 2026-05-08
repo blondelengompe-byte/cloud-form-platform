@@ -73,6 +73,8 @@ jobs:
             DOMAIN_NAME=${{ secrets.VPS_HOST }}.nip.io
             NEXTAUTH_URL=https://${{ secrets.VPS_HOST }}.nip.io:8444
             WEBAPP_URL=https://${{ secrets.VPS_HOST }}.nip.io:8444
+            NEXT_PUBLIC_WEBAPP_URL=https://${{ secrets.VPS_HOST }}.nip.io:8444
+            NEXT_PUBLIC_FORMBRICKS_API_HOST=https://${{ secrets.VPS_HOST }}.nip.io:8444
             NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
             POSTGRES_USER=form_admin
