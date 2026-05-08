@@ -30,54 +30,65 @@ jobs:
           docker build -t $ECR_REGISTRY/form-app:latest .
           docker push $ECR_REGISTRY/form-app:latest
 
-      - name: Create folder on EC2
+      - name: Prepare VPS Environment
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            mkdir -p /home/ubuntu/cloud-form-platform
+            mkdir -p /root/cloud-form-platform
+            cd /root/cloud-form-platform
+            # Clean up old containers if they exist
+            # docker compose down || true
 
-      - name: Copy Config Files to EC2
+      - name: Copy Infrastructure Files to VPS
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
-          source: "docker-compose.yml,proxy,monitoring,backups,Dockerfile"
-          target: "/home/ubuntu/cloud-form-platform"
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "docker-compose.yml,proxy,monitoring,backups"
+          target: "/root/cloud-form-platform"
 
-      - name: Deploy to EC2
+      - name: Deploy and Start Services
         uses: appleboy/ssh-action@v1.2.0
         with:
-          host: ${{ secrets.EC2_HOST }}
-          username: ubuntu
-          key: ${{ secrets.EC2_SSH_KEY }}
+          host: ${{ secrets.VPS_HOST }}
+          username: root
+          key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            cd /home/ubuntu/cloud-form-platform
+            cd /root/cloud-form-platform
 
+            # Generate .env file from secrets
             cat <<EOF > .env
             REGISTRY=${{ steps.login-ecr.outputs.registry }}
-            DOMAIN_NAME=${{ secrets.EC2_HOST }}.nip.io
-            NEXTAUTH_URL=https://${{ secrets.EC2_HOST }}.nip.io
-            WEBAPP_URL=https://${{ secrets.EC2_HOST }}.nip.io
+            DOMAIN_NAME=${{ secrets.VPS_HOST }}.nip.io
+            NEXTAUTH_URL=https://${{ secrets.VPS_HOST }}.nip.io
+            WEBAPP_URL=https://${{ secrets.VPS_HOST }}.nip.io
             NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            
             POSTGRES_USER=form_admin
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             POSTGRES_DB=formbricks
+            DATABASE_URL=postgresql://form_admin:${{ secrets.POSTGRES_PASSWORD }}@db:5432/formbricks
+            
             REDIS_URL=redis://redis:6379
             MODSEC_MODE=DetectionOnly
+            
             AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             AWS_DEFAULT_REGION=eu-west-3
             S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}
+            
             GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
             EOF
 
+            # Docker Login
             echo "${{ steps.login-ecr.outputs.password }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
 
+            # Deployment
             docker compose pull
-            docker compose up -d
+            docker compose up -d --remove-orphans
             docker compose ps
