@@ -51,6 +51,11 @@ jobs:
           source: "docker-compose.yml,proxy,monitoring,backups"
           target: "/root/cloud-form-platform"
 
+      - name: Get ECR Password
+        id: get-ecr-password
+        run: |
+          echo "password=$(aws ecr get-login-password --region eu-west-3)" >> $GITHUB_OUTPUT
+
       - name: Deploy and Start Services
         uses: appleboy/ssh-action@v1.2.0
         with:
@@ -86,7 +91,7 @@ jobs:
 
             # Docker Login
             echo "--- Connexion à ECR ---"
-            echo "${{ steps.login-ecr.outputs.password }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
+            echo "${{ steps.get-ecr-password.outputs.password }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             echo "✅ Docker Login réussi"
 
             # Deployment
