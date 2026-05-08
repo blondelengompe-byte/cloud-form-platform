@@ -46,6 +46,7 @@ services:
     networks:
       - app-net
       - data-net
+      - default
     depends_on:
       db:
         condition: service_healthy
