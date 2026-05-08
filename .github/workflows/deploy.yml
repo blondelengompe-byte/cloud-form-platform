@@ -108,9 +108,13 @@ jobs:
             fi
 
             # Deployment
-            echo "--- Pull des images ---"
+            echo "--- Nettoyage des anciennes versions ---"
+            docker compose down --remove-orphans
+            
+            echo "--- Pull des nouvelles images ---"
             docker compose pull
+            
             echo "--- Démarrage des containers ---"
-            docker compose up -d --remove-orphans
+            docker compose up -d
             docker compose ps
             echo "✅ Déploiement terminé avec succès !"
