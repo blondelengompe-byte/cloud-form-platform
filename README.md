@@ -39,7 +39,7 @@ Tout "push" sur la branche `main` déclenche automatiquement le cycle de déploi
 
 ## 4. Accès aux Services
 Une fois déployé, les services sont accessibles aux adresses suivantes :
-- **Application principale** : `https://[IP_DU_VPS]`
+- **Application principale** : `https://[IP_DU_VPS]:8444` (Port 8081 pour HTTP)
 - **Dashboard Monitoring (Grafana)** : `http://[IP_DU_VPS]:3001` (Login: `admin`)
 
 ## 5. Sécurité & Fiabilité
