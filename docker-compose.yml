@@ -28,6 +28,8 @@ services:
     networks:
       - app-net
       - default
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
@@ -137,23 +139,25 @@ services:
     image: grafana/loki:latest
     container_name: forms_loki
     restart: always
-    volumes:
-      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
     networks:
       - monitoring-net
       - default
+    volumes:
+      - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/tmp/loki
 
   promtail:
     image: grafana/promtail:latest
     container_name: forms_promtail
     restart: always
+    networks:
+      - monitoring-net
+      - default
     volumes:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
-    networks:
-      - monitoring-net
-      - default
+      - promtail_data:/var/lib/promtail
     depends_on:
       - loki
 
@@ -167,6 +171,8 @@ services:
       - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_SERVER_ROOT_URL=%(protocol)s://%(domain)s:%(http_port)s/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
@@ -227,3 +233,12 @@ volumes:
   grafana_data:
     external: true
     name: cloud-form-platform_grafana_data
+  redis_data:
+    external: true
+    name: cloud-form-platform_redis_data
+  loki_data:
+    external: true
+    name: cloud-form-platform_loki_data
+  promtail_data:
+    external: true
+    name: cloud-form-platform_promtail_data
