@@ -64,8 +64,8 @@ jobs:
             cat <<EOF > .env
             REGISTRY=${{ steps.login-ecr.outputs.registry }}
             DOMAIN_NAME=${{ secrets.VPS_HOST }}.nip.io
-            NEXTAUTH_URL=https://${{ secrets.VPS_HOST }}.nip.io
-            WEBAPP_URL=https://${{ secrets.VPS_HOST }}.nip.io
+            NEXTAUTH_URL=https://${{ secrets.VPS_HOST }}.nip.io:8444
+            WEBAPP_URL=https://${{ secrets.VPS_HOST }}.nip.io:8444
             NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
             

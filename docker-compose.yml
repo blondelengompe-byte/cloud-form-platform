@@ -65,8 +65,8 @@ services:
     container_name: forms_proxy
     restart: always
     ports:
-      - "80:8080"
-      - "443:8443"
+      - "8081:8080"
+      - "8444:8443"
     environment:
       - PORT=8080
       - PROXY_SSL=on
