@@ -216,6 +216,10 @@ networks:
 
 volumes:
   db_data:
+    external: true
   nginx_logs:
+    external: true
   prometheus_data:
+    external: true
   grafana_data:
+    external: true
