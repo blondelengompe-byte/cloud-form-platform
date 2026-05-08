@@ -67,14 +67,17 @@ jobs:
             echo "--- Début du déploiement sur le VPS ---"
             cd /root/cloud-form-platform
 
+            # Set Domain
+            DOMAIN="formbricks.efymotors.com"
+            
             # Generate .env file
             cat <<EOF > .env
             REGISTRY=${{ steps.login-ecr.outputs.registry }}
-            DOMAIN_NAME=${{ secrets.VPS_HOST }}.nip.io
-            NEXTAUTH_URL=https://${{ secrets.VPS_HOST }}.nip.io:8444
-            WEBAPP_URL=https://${{ secrets.VPS_HOST }}.nip.io:8444
-            NEXT_PUBLIC_WEBAPP_URL=https://${{ secrets.VPS_HOST }}.nip.io:8444
-            NEXT_PUBLIC_FORMBRICKS_API_HOST=https://${{ secrets.VPS_HOST }}.nip.io:8444
+            DOMAIN_NAME=$DOMAIN
+            NEXTAUTH_URL=https://$DOMAIN:8444
+            WEBAPP_URL=https://$DOMAIN:8444
+            NEXT_PUBLIC_WEBAPP_URL=https://$DOMAIN:8444
+            NEXT_PUBLIC_FORMBRICKS_API_HOST=https://$DOMAIN:8444
             NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
             POSTGRES_USER=form_admin
@@ -98,14 +101,14 @@ jobs:
 
             # SSL Bootstrap (Chicken and Egg fix)
             echo "--- Vérification des certificats SSL ---"
-            CERT_PATH="/root/cloud-form-platform/certs/live/${{ secrets.VPS_HOST }}.nip.io"
+            CERT_PATH="/root/cloud-form-platform/certs/live/$DOMAIN"
             if [ ! -f "$CERT_PATH/fullchain.pem" ]; then
-              echo "⚠️ Certificats manquants, génération de certificats temporaires..."
+              echo "⚠️ Certificats manquants pour $DOMAIN, génération de certificats temporaires..."
               mkdir -p "$CERT_PATH"
               openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
                 -keyout "$CERT_PATH/privkey.pem" \
                 -out "$CERT_PATH/fullchain.pem" \
-                -subj "/CN=${{ secrets.VPS_HOST }}.nip.io"
+                -subj "/CN=$DOMAIN"
               chmod -R 755 /root/cloud-form-platform/certs
               echo "✅ Certificats temporaires générés et permissions fixées"
             fi
