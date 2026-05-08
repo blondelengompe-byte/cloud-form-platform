@@ -217,9 +217,13 @@ networks:
 volumes:
   db_data:
     external: true
+    name: cloud-form-platform_db_data
   nginx_logs:
     external: true
+    name: cloud-form-platform_nginx_logs
   prometheus_data:
     external: true
+    name: cloud-form-platform_prometheus_data
   grafana_data:
     external: true
+    name: cloud-form-platform_grafana_data
