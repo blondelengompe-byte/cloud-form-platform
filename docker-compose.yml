@@ -54,8 +54,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # Automatically run migrations on startup with the correct schema path
-    command: sh -c "npx prisma migrate deploy --schema /app/packages/database/prisma/schema.prisma && node apps/web/server.js"
+    # Using default entrypoint now that network is fixed
     deploy:
       replicas: 2 # High Availability requirement
 
