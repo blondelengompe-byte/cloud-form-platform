@@ -12,6 +12,7 @@ services:
       - db_data:/var/lib/postgresql/data
     networks:
       - data-net
+      - default
     user: "70:70" # Run as non-root user (postgres)
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}" ]
@@ -26,6 +27,7 @@ services:
     restart: always
     networks:
       - app-net
+      - default
     healthcheck:
       test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
@@ -78,6 +80,7 @@ services:
     networks:
       - edge-net
       - app-net
+      - default
     depends_on:
       - formbricks
 
@@ -92,6 +95,7 @@ services:
     command: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
     networks:
       - edge-net
+      - default
 
   # Metrics Collection
   cadvisor:
@@ -105,6 +109,7 @@ services:
       - /var/lib/docker/:/var/lib/docker:ro
     networks:
       - monitoring-net
+      - default
 
   node-exporter:
     image: prom/node-exporter:latest
@@ -112,6 +117,7 @@ services:
     restart: always
     networks:
       - monitoring-net
+      - default
 
   prometheus:
     image: prom/prometheus:latest
@@ -122,6 +128,7 @@ services:
       - prometheus_data:/prometheus
     networks:
       - monitoring-net
+      - default
     depends_on:
       - cadvisor
       - node-exporter
@@ -135,6 +142,7 @@ services:
       - ./monitoring/loki-config.yml:/etc/loki/local-config.yaml:ro
     networks:
       - monitoring-net
+      - default
 
   promtail:
     image: grafana/promtail:latest
@@ -146,6 +154,7 @@ services:
       - ./monitoring/promtail-config.yml:/etc/promtail/config.yml:ro
     networks:
       - monitoring-net
+      - default
     depends_on:
       - loki
 
@@ -165,6 +174,7 @@ services:
     networks:
       - edge-net
       - monitoring-net
+      - default
     depends_on:
       - prometheus
       - loki
@@ -185,6 +195,7 @@ services:
     networks:
       - data-net
       - edge-net
+      - default
     volumes:
       - ./backups/backup_s3.sh:/usr/local/bin/backup_s3.sh:ro
       - ./proxy:/etc/nginx/conf.d:ro
