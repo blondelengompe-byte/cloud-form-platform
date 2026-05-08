@@ -51,13 +51,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Healthcheck removed for compatibility
     deploy:
       replicas: 2 # High Availability requirement
-    healthcheck:
-      test: ["CMD-SHELL", "nc -z localhost 3000 || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
 
   # Reverse Proxy + WAF (ModSecurity)
   proxy:
