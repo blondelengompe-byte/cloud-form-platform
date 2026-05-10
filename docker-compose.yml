@@ -127,6 +127,8 @@ services:
     volumes:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
     networks:
       - monitoring-net
       - default
