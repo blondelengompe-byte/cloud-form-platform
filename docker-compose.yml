@@ -47,9 +47,16 @@ services:
       - WEBAPP_URL=${WEBAPP_URL}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - REDIS_URL=${REDIS_URL}
+      - MAIL_FROM=${MAIL_FROM}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - SMTP_SECURE_ENABLED=${SMTP_SECURE_ENABLED:-true}
     networks:
       - app-net
       - data-net
+      - web_gateway
       - default
     depends_on:
       db:
@@ -60,48 +67,9 @@ services:
     deploy:
       replicas: 2 # High Availability requirement
 
-  # Reverse Proxy + WAF (ModSecurity)
-  proxy:
-    image: owasp/modsecurity-crs:nginx-alpine
-    container_name: forms_proxy
-    restart: always
-    ports:
-      - "8081:8080"
-      - "8444:8443"
-    environment:
-      - PORT=8080
-      - PROXY_SSL=on
-      - DOMAIN_NAME=${DOMAIN_NAME}
-      - MODSEC_RULE_ENGINE=${MODSEC_MODE}
-    volumes:
-      - ./proxy/nginx.conf:/etc/nginx/templates/conf.d/default.conf.template:ro
-      - ./certs:/etc/letsencrypt
-      - ./certbot:/var/www/certbot
-      - nginx_logs:/var/log/nginx
-    networks:
-      - edge-net
-      - app-net
-      - default
-    depends_on:
-      - formbricks
-
-  # SSL Management
-  certbot:
-    image: certbot/certbot
-    container_name: forms_certbot
-    restart: always
-    volumes:
-      - ./certs:/etc/letsencrypt
-      - ./certbot:/var/www/certbot
-    command: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
-    networks:
-      - edge-net
-      - default
-
   # Metrics Collection
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:latest
-    container_name: forms_cadvisor
     restart: always
     volumes:
       - /:/rootfs:ro
@@ -173,7 +141,7 @@ services:
       - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
-      - GF_SERVER_ROOT_URL=http://localhost:3000/
+      - GF_SERVER_ROOT_URL=https://grafana.efymotors.com/
       - GF_SERVER_SERVE_FROM_SUB_PATH=false
     volumes:
       - grafana_data:/var/lib/grafana
@@ -181,6 +149,7 @@ services:
     networks:
       - edge-net
       - monitoring-net
+      - web_gateway
       - default
     depends_on:
       - prometheus
@@ -220,6 +189,8 @@ networks:
   data-net:
     internal: true
   monitoring-net:
+  web_gateway:
+    external: true
 
 
 volumes:

@@ -74,10 +74,10 @@ jobs:
             cat <<EOF > .env
             REGISTRY=${{ steps.login-ecr.outputs.registry }}
             DOMAIN_NAME=$DOMAIN
-            NEXTAUTH_URL=https://$DOMAIN:8444
-            WEBAPP_URL=https://$DOMAIN:8444
-            NEXT_PUBLIC_WEBAPP_URL=https://$DOMAIN:8444
-            NEXT_PUBLIC_FORMBRICKS_API_HOST=https://$DOMAIN:8444
+            NEXTAUTH_URL=https://$DOMAIN
+            WEBAPP_URL=https://$DOMAIN
+            NEXT_PUBLIC_WEBAPP_URL=https://$DOMAIN
+            NEXT_PUBLIC_FORMBRICKS_API_HOST=https://$DOMAIN
             NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
             POSTGRES_USER=form_admin
@@ -91,6 +91,13 @@ jobs:
             AWS_DEFAULT_REGION=eu-west-3
             S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}
             GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+            # Configuration SMTP (Gmail)
+            MAIL_FROM="${{ secrets.EMAIL_FROM }}"
+            SMTP_HOST=${{ secrets.EMAIL_HOST }}
+            SMTP_PORT=${{ secrets.EMAIL_PORT }}
+            SMTP_USER=${{ secrets.EMAIL_USER }}
+            SMTP_PASSWORD="${{ secrets.EMAIL_PASSWORD }}"
+            SMTP_SECURE_ENABLED=false
             EOF
             echo "✅ Fichier .env généré"
 
@@ -99,19 +106,8 @@ jobs:
             echo "${{ steps.get-ecr-password.outputs.password }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             echo "✅ Docker Login réussi"
 
-            # SSL Bootstrap (Chicken and Egg fix)
-            echo "--- Vérification des certificats SSL ---"
-            CERT_PATH="/root/cloud-form-platform/certs/live/$DOMAIN"
-            if [ ! -f "$CERT_PATH/fullchain.pem" ]; then
-              echo "⚠️ Certificats manquants pour $DOMAIN, génération de certificats temporaires..."
-              mkdir -p "$CERT_PATH"
-              openssl req -x509 -nodes -days 1 -newkey rsa:2048 \
-                -keyout "$CERT_PATH/privkey.pem" \
-                -out "$CERT_PATH/fullchain.pem" \
-                -subj "/CN=$DOMAIN"
-              chmod -R 755 /root/cloud-form-platform/certs
-              echo "✅ Certificats temporaires générés et permissions fixées"
-            fi
+            # Ensure shared network exists
+            docker network create web_gateway || true
 
             # Deployment
             echo "--- Nettoyage des anciennes versions ---"
