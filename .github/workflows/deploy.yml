@@ -29,7 +29,6 @@ jobs:
           script: |
             set -e
             echo "--- Début du déploiement sur le VPS ---"
-            mkdir -p /root/cloud-form-platform
             cd /root/cloud-form-platform
             
             # 1. Génération du fichier .env
@@ -45,7 +44,7 @@ jobs:
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
             GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
             
-            # Config Minio (S3 local)
+            # Config Minio
             S3_ACCESS_KEY=admin
             S3_SECRET_KEY=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
             S3_REGION=us-east-1
@@ -68,20 +67,17 @@ jobs:
             EOF
             echo "✅ Fichier .env généré"
 
-            # 2. Préparation environnement
+            # 2. Réseaux et Dossiers
             docker network create web_gateway || true
             mkdir -p uploads
             chmod -R 777 uploads
 
             # 3. Lancement des services
             echo "--- Lancement des conteneurs ---"
-            # On s'assure d'avoir le dernier docker-compose.yml si vous l'avez modifié
-            # (Note: Le SCP doit être fait avant ou on utilise git pull sur le serveur)
-            
             docker compose pull
             docker compose up -d --remove-orphans
 
-            # 4. Configuration Minio
+            # 4. Configuration Minio (Buckets et CORS)
             echo "--- Configuration Minio ---"
             sleep 15
             docker exec forms_grafana /bin/sh -c "
@@ -97,5 +93,10 @@ jobs:
               ./mc anonymous set-json policy.json myminio/backups
             " || echo "⚠️ Config Minio manuelle nécessaire"
 
-            # 5. Finalisation
-            echo "✅ Déploiement terminé !"
+            # 5. Migrations Base de données
+            echo "--- Migrations de la base de données ---"
+            sleep 5
+            # On utilise docker compose exec pour lancer les migrations Prisma
+            docker compose exec -T formbricks npx prisma migrate deploy --schema packages/database/prisma/schema.prisma || echo "⚠️ Migration déjà faite"
+
+            echo "✅ Déploiement terminé avec succès !"
