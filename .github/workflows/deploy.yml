@@ -134,8 +134,10 @@ jobs:
               chmod +x mc && \
               ./mc alias set myminio https://s3.efymotors.com admin '${{ secrets.GRAFANA_ADMIN_PASSWORD }}' && \
               ./mc mb myminio/formbricks || true && \
-              ./mc anonymous set public myminio/formbricks
-            " || echo "⚠️ Erreur lors de la config Minio (à vérifier manuellement)"
+              echo '{"Version":"2012-10-17","Statement":[{"Action":["s3:GetBucketLocation","s3:ListBucket"],"Effect":"Allow","Principal":{"AWS":["*"]},"Resource":["arn:aws:s3:::formbricks"]},{"Action":["s3:GetObject"],"Effect":"Allow","Principal":{"AWS":["*"]},"Resource":["arn:aws:s3:::formbricks/*"]}]}' > policy.json && \
+              ./mc anonymous set public myminio/formbricks && \
+              ./mc anonymous set-json policy.json myminio/formbricks
+            " || echo "⚠️ Erreur lors de la config Minio"
 
             echo "--- Exécution des migrations de base de données ---"
             # On attend que le container soit prêt
