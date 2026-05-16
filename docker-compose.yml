@@ -38,7 +38,7 @@ services:
 
   # Application Layer (Multi-instance ready)
   formbricks:
-    image: ${REGISTRY}/form-app:latest
+    image: ghcr.io/formbricks/formbricks:latest
     restart: always
     volumes:
       - ./uploads:/app/uploads
