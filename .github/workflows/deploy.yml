@@ -92,12 +92,12 @@ jobs:
             S3_BUCKET_NAME=${{ secrets.S3_BUCKET_NAME }}
             GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
             # Configuration SMTP (Gmail)
-            MAIL_FROM="${{ secrets.EMAIL_FROM }}"
+            MAIL_FROM=${{ secrets.EMAIL_USER }}
             SMTP_HOST=${{ secrets.EMAIL_HOST }}
             SMTP_PORT=${{ secrets.EMAIL_PORT }}
             SMTP_USER=${{ secrets.EMAIL_USER }}
             SMTP_PASSWORD="${{ secrets.EMAIL_PASSWORD }}"
-            SMTP_SECURE_ENABLED=false
+            SMTP_SECURE_ENABLED=0
             EOF
             echo "✅ Fichier .env généré"
 
