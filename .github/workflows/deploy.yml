@@ -106,8 +106,10 @@ jobs:
             echo "${{ steps.get-ecr-password.outputs.password }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
             echo "✅ Docker Login réussi"
 
-            # Ensure shared network exists
+            # Ensure shared network and storage exists
             docker network create web_gateway || true
+            mkdir -p uploads
+            chmod -R 777 uploads
 
             # Deployment
             echo "--- Nettoyage des anciennes versions ---"
