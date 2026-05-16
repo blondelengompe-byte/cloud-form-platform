@@ -55,26 +55,16 @@ jobs:
             set -e
             echo "--- Début du déploiement sur le VPS ---"
             cd /root/cloud-form-platform
-
-            # Set Domain
-            DOMAIN="formbricks.efymotors.com"
-            
-            # Generate .env file
             cat <<EOF > .env
-            REGISTRY=${{ steps.login-ecr.outputs.registry }}
-            DOMAIN_NAME=$DOMAIN
-            NEXTAUTH_URL=https://$DOMAIN
-            WEBAPP_URL=https://$DOMAIN
-            NEXT_PUBLIC_WEBAPP_URL=https://$DOMAIN
-            NEXT_PUBLIC_FORMBRICKS_API_HOST=https://$DOMAIN
+            WEBAPP_URL=https://formbricks.efymotors.com
+            NEXT_PUBLIC_WEBAPP_URL=https://formbricks.efymotors.com
+            NEXT_PUBLIC_FORMBRICKS_API_HOST=https://formbricks.efymotors.com
             NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
-            POSTGRES_USER=form_admin
+            DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@db:5432/${{ secrets.POSTGRES_DB }}
+            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
             POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            POSTGRES_DB=formbricks
-            DATABASE_URL=postgresql://form_admin:${{ secrets.POSTGRES_PASSWORD }}@db:5432/formbricks
-            REDIS_URL=redis://redis:6379
-            MODSEC_MODE=DetectionOnly
             AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
             AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
             AWS_DEFAULT_REGION=eu-west-3
@@ -102,19 +92,14 @@ jobs:
             EOF
             echo "✅ Fichier .env généré"
 
-            # Docker Login
-            echo "--- Connexion à ECR ---"
-            echo "${{ steps.get-ecr-password.outputs.password }}" | docker login --username AWS --password-stdin ${{ steps.login-ecr.outputs.registry }}
-            echo "✅ Docker Login réussi"
-
             # Ensure shared network and storage exists
             docker network create web_gateway || true
             mkdir -p uploads
             chmod -R 777 uploads
 
-            # Deployment
-            echo "--- Nettoyage des anciennes versions ---"
-            docker compose down --remove-orphans
+            echo "--- Lancement des conteneurs ---"
+            docker compose pull
+            docker compose up -d --remove-orphans
             
             echo "--- Pull des nouvelles images ---"
             docker compose pull
