@@ -51,15 +51,16 @@ services:
       - NEXT_PUBLIC_FORMBRICKS_API_HOST=${WEBAPP_URL}
       - ENCRYPTION_KEY=${ENCRYPTION_KEY}
       - REDIS_URL=${REDIS_URL}
-      - S3_ACCESS_KEY=${AWS_ACCESS_KEY_ID}
-      - S3_SECRET_KEY=${AWS_SECRET_ACCESS_KEY}
-      - S3_REGION=${AWS_DEFAULT_REGION}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
-      - S3_ENDPOINT=https://s3.${AWS_DEFAULT_REGION}.amazonaws.com
-      - NEXT_PUBLIC_S3_ACCESS_KEY=${AWS_ACCESS_KEY_ID}
-      - NEXT_PUBLIC_S3_REGION=${AWS_DEFAULT_REGION}
-      - NEXT_PUBLIC_S3_BUCKET_NAME=${S3_BUCKET_NAME}
-      - NEXT_PUBLIC_S3_ENDPOINT=https://s3.${AWS_DEFAULT_REGION}.amazonaws.com
+      - S3_ACCESS_KEY=admin
+      - S3_SECRET_KEY=${GRAFANA_ADMIN_PASSWORD}
+      - S3_REGION=us-east-1
+      - S3_BUCKET_NAME=formbricks
+      - S3_ENDPOINT=https://s3.efymotors.com
+      - NEXT_PUBLIC_S3_ACCESS_KEY=admin
+      - NEXT_PUBLIC_S3_REGION=us-east-1
+      - NEXT_PUBLIC_S3_BUCKET_NAME=formbricks
+      - NEXT_PUBLIC_S3_ENDPOINT=https://s3.efymotors.com
+      - S3_FORCE_PATH_STYLE=true
       - MAIL_FROM=${MAIL_FROM}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
@@ -183,10 +184,10 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-      - AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
+      - AWS_ACCESS_KEY_ID=admin
+      - AWS_SECRET_ACCESS_KEY=${GRAFANA_ADMIN_PASSWORD}
+      - S3_BUCKET_NAME=formbricks
+      - S3_ENDPOINT=https://s3.efymotors.com
     networks:
       - data-net
       - edge-net
@@ -199,6 +200,19 @@ services:
     depends_on:
       db:
         condition: service_healthy
+  # --- STORAGE (Private S3) ---
+  minio:
+    image: minio/minio:latest
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+    volumes:
+      - minio_data:/data
+    networks:
+      - web_gateway
+      - default
 
 networks:
   edge-net:
@@ -234,3 +248,5 @@ volumes:
   promtail_data:
     external: true
     name: cloud-form-platform_promtail_data
+  minio_data:
+    external: false

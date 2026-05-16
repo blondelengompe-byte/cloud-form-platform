@@ -126,6 +126,17 @@ jobs:
             sleep 5
             docker exec forms_grafana grafana-cli admin reset-admin-password "${{ secrets.GRAFANA_ADMIN_PASSWORD }}" || echo "⚠️ Échec du reset password Grafana (peut-être pas encore prêt)"
 
+            echo "--- Configuration du Bucket Minio ---"
+            # On attend que Minio soit prêt
+            sleep 10
+            docker exec forms_grafana /bin/sh -c "
+              curl -O https://dl.min.io/client/mc/release/linux-amd64/mc && \
+              chmod +x mc && \
+              ./mc alias set myminio https://s3.efymotors.com admin '${{ secrets.GRAFANA_ADMIN_PASSWORD }}' && \
+              ./mc mb myminio/formbricks || true && \
+              ./mc anonymous set public myminio/formbricks
+            " || echo "⚠️ Erreur lors de la config Minio (à vérifier manuellement)"
+
             echo "--- Exécution des migrations de base de données ---"
             # On attend que le container soit prêt
             sleep 10
