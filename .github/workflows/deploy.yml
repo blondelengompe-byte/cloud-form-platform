@@ -135,9 +135,12 @@ jobs:
               chmod +x mc && \
               ./mc alias set myminio https://s3.efymotors.com admin '${{ secrets.GRAFANA_ADMIN_PASSWORD }}' && \
               ./mc mb myminio/formbricks || true && \
-              echo '{"Version":"2012-10-17","Statement":[{"Action":["s3:GetBucketLocation","s3:ListBucket"],"Effect":"Allow","Principal":{"AWS":["*"]},"Resource":["arn:aws:s3:::formbricks"]},{"Action":["s3:GetObject"],"Effect":"Allow","Principal":{"AWS":["*"]},"Resource":["arn:aws:s3:::formbricks/*"]}]}' > policy.json && \
+              ./mc mb myminio/backups || true && \
+              echo '{"Version":"2012-10-17","Statement":[{"Action":["s3:GetBucketLocation","s3:ListBucket"],"Effect":"Allow","Principal":{"AWS":["*"]},"Resource":["arn:aws:s3:::formbricks","arn:aws:s3:::backups"]},{"Action":["s3:GetObject"],"Effect":"Allow","Principal":{"AWS":["*"]},"Resource":["arn:aws:s3:::formbricks/*","arn:aws:s3:::backups/*"]}]}' > policy.json && \
               ./mc anonymous set public myminio/formbricks && \
-              ./mc anonymous set-json policy.json myminio/formbricks
+              ./mc anonymous set public myminio/backups && \
+              ./mc anonymous set-json policy.json myminio/formbricks && \
+              ./mc anonymous set-json policy.json myminio/backups
             " || echo "⚠️ Erreur lors de la config Minio"
 
             echo "--- Exécution des migrations de base de données ---"
