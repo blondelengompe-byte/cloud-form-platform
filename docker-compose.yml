@@ -55,13 +55,8 @@ services:
       - S3_SECRET_KEY=${GRAFANA_ADMIN_PASSWORD}
       - S3_REGION=us-east-1
       - S3_BUCKET_NAME=formbricks
-      - S3_ENDPOINT=http://minio:9000
-      - NEXT_PUBLIC_S3_ACCESS_KEY=admin
-      - NEXT_PUBLIC_S3_REGION=us-east-1
-      - NEXT_PUBLIC_S3_BUCKET_NAME=formbricks
-      - NEXT_PUBLIC_S3_ENDPOINT=https://s3.efymotors.com
+      - S3_ENDPOINT_URL=https://s3.efymotors.com
       - S3_FORCE_PATH_STYLE=1
-      - NEXT_PUBLIC_S3_FORCE_PATH_STYLE=1
       - MAIL_FROM=${MAIL_FROM}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_PORT=${SMTP_PORT}
@@ -209,6 +204,7 @@ services:
     environment:
       - MINIO_ROOT_USER=admin
       - MINIO_ROOT_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - MINIO_API_CORS_ALLOW_ORIGIN=https://formbricks.efymotors.com
     volumes:
       - minio_data:/data
     networks:
