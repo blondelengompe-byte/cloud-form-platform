@@ -145,6 +145,12 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
       - GF_SERVER_ROOT_URL=https://grafana.efymotors.com/
       - GF_SERVER_SERVE_FROM_SUB_PATH=false
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=kseme277@gmail.com
+      - GF_SMTP_PASSWORD=tegt pkti nosl gjhy
+      - GF_SMTP_FROM_ADDRESS=noreply@efymotors.com
+      - GF_SMTP_FROM_NAME=Grafana Alerts
     volumes:
       - grafana_data:/var/lib/grafana
       - ./monitoring/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
