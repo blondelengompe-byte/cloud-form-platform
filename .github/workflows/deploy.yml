@@ -38,11 +38,11 @@ jobs:
             NEXT_PUBLIC_FORMBRICKS_API_HOST=https://formbricks.efymotors.com
             NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}
             ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
-            DATABASE_URL=postgresql://${{ secrets.POSTGRES_USER }}:${{ secrets.POSTGRES_PASSWORD }}@db:5432/${{ secrets.POSTGRES_DB }}
-            POSTGRES_DB=${{ secrets.POSTGRES_DB }}
-            POSTGRES_USER=${{ secrets.POSTGRES_USER }}
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            GRAFANA_ADMIN_PASSWORD=${{ secrets.GRAFANA_ADMIN_PASSWORD }}
+            DATABASE_URL="postgresql://postgres:${{ secrets.POSTGRES_PASSWORD }}@db:5432/formbricks"
+            POSTGRES_DB="formbricks"
+            POSTGRES_USER="postgres"
+            POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+            GRAFANA_ADMIN_PASSWORD="${{ secrets.GRAFANA_ADMIN_PASSWORD }}"
             
             # Config Minio
             S3_ACCESS_KEY=admin
