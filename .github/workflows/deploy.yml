@@ -119,6 +119,11 @@ jobs:
             echo "--- Déploiement des nouveaux containers ---"
             docker compose up -d --remove-orphans
             
+            echo "--- Forçage du mot de passe Grafana ---"
+            # On attend que Grafana soit prêt avant de changer le mot de passe
+            sleep 5
+            docker exec forms_grafana grafana-cli admin reset-admin-password "${{ secrets.GRAFANA_ADMIN_PASSWORD }}" || echo "⚠️ Échec du reset password Grafana (peut-être pas encore prêt)"
+
             echo "--- Exécution des migrations de base de données ---"
             # On attend que le container soit prêt
             sleep 10
